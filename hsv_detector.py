@@ -8,21 +8,42 @@ class HSVDETECTOR:
 
     def __init__(self,hsv_lower,hsv_upper):
 
+        
         self.hsv_lower = hsv_lower
         self.hsv_upper = hsv_upper
 
-        # self.name_window = "Trackbar"
-        
-        # cv2.namedWindow(self.name_window)
+        self.create_trackbar()
 
-        # cv2.createTrackbar("L-H", self.name_window, 0, 179, nothing)
-        # cv2.createTrackbar("L-S", self.name_window, 0, 255, nothing)
-        # cv2.createTrackbar("L-V", self.name_window, 0, 255, nothing)
-        # cv2.createTrackbar("U-H", self.name_window, 0, 179, nothing)
-        # cv2.createTrackbar("U-S", self.name_window, 0, 255, nothing)
-        # cv2.createTrackbar("U-V", self.name_window, 0, 255, nothing)
+    def create_trackbar(self):
 
-    
+        print("create_trackbar")
+
+        cv2.namedWindow("Trackbar")
+
+        cv2.createTrackbar("LH","Trackbar",0,179,nothing)
+        cv2.createTrackbar("LS","Trackbar",0,255,nothing)
+        cv2.createTrackbar("LV","Trackbar",0,255,nothing)
+        cv2.createTrackbar("UH","Trackbar",0,179,nothing)
+        cv2.createTrackbar("US","Trackbar",0,255,nothing)
+        cv2.createTrackbar("UV","Trackbar",0,255,nothing)
+
+
+    def get_trackbar(self):
+
+        print("get_trackbar")
+
+        lh = cv2.getTrackbarPos("LH","Trackbar")
+        ls = cv2.getTrackbarPos("LS","Trackbar")
+        lv = cv2.getTrackbarPos("LV","Trackbar")
+        uh = cv2.getTrackbarPos("UH","Trackbar")
+        us = cv2.getTrackbarPos("US","Trackbar")
+        uv = cv2.getTrackbarPos("UV","Trackbar")
+
+        lower = np.array([lh,ls,lv])
+        upper = np.array([uh,us,uv])
+
+        return lower , upper
+
     ## create hsv func
 
     ## get hsv func
@@ -30,67 +51,86 @@ class HSVDETECTOR:
 
     def detect(self,frame):
         
-        img_blur = cv2.GaussianBlur(frame , (9 , 9) , 1)
+        print("detect_ilk")        
 
-        hsv = cv2.cvtColor(img_blur , cv2.COLOR_BGR2HSV)
+        imgBlur = cv2.GaussianBlur(frame,(9,9),1)
 
-        # lh = cv2.getTrackbarPos("L-H", self.name_window)
-        # ls = cv2.getTrackbarPos("L-S", self.name_window)
-        # lv = cv2.getTrackbarPos("L-V", self.name_window)
-        # uh = cv2.getTrackbarPos("U-H", self.name_window)
-        # us = cv2.getTrackbarPos("U-S", self.name_window)
-        # uv = cv2.getTrackbarPos("U-V", self.name_window)
+        hsv = cv2.cvtColor(imgBlur , cv2.COLOR_BGR2HSV)
 
-        # lower = np.array([lh,ls,lv])
-        # upper = np.array([uh,us,uv])
+        
 
+        print("hsv")
 
-        mask = cv2.inRange(hsv , self.hsv_lower , self.hsv_upper)
+        lower , upper = self.get_trackbar()
+
+        
+        mask = cv2.inRange(hsv , lower , upper)
+
+        print("mask")
+
+        cv2.imshow("mask",mask)
 
         structuring_element = cv2.getStructuringElement(cv2.MORPH_RECT , (3 , 3 ))
 
         mask = cv2.erode(mask,structuring_element)
 
-        contours , hierarchy = cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+        mask_copy = mask.copy()
+
+        (contours,hierarchy) = cv2.findContours(mask_copy,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
 
         center = None 
         
-        if len(contours) > 0 :
+        print("if_oncesi")
+        
+        if len(contours) > 0:
 
-            contour = max(contours,key = cv2.contourArea)
+            print("if")
 
-            rect = cv2.minAreaRect(contour)
+            for contour in contours:
+                
+                print("cnt")
 
-            (x,y) , (width , height ) , rotation = rect
+                area = cv2.contourArea(contour)
 
-            text = f"x : {np.around(x)} , y : {np.around(y)} , height : {np.around(height)} , width : {np.around(width)} ,rotation : {np.around(rotation)}"
+                
 
-            # text = f"""
+                if area > 500:
+                    
+                    print("ikinci if")
+                    
+                    rect = cv2.minAreaRect(contour)
 
-            #     x : {np.around(x)} ,
+                    (x,y) , (width , height ) , rotation = rect
 
-            #     y : {np.around(y)} ,
+                    text = f"x : {np.around(x)} , y : {np.around(y)} , height : {np.around(height)} , width : {np.around(width)} ,rotation : {np.around(rotation)}"
 
-            #     height : {np.around(height)} ,
+                    # text = f"""
 
-            #     width : {np.around(width)} ,
+                    #     x : {np.around(x)} ,
 
-            #     rotation : {np.around(rotation)}
-            
-            # """
-            
-            box = cv2.boxPoints(rect)
+                    #     y : {np.around(y)} ,
 
-            box = np.int64(box)
+                    #     height : {np.around(height)} ,
 
-            M = cv2.moments(contour)
+                    #     width : {np.around(width)} ,
 
-            center = (int(M['m10'] / M ['m00']), int(M['m01'] / M ['m00']))
+                    #     rotation : {np.around(rotation)}
+                    
+                    # """
+                    
+                    box = cv2.boxPoints(rect)
 
-            cv2.drawContours(frame , [box] , 0 , (0 , 255 , 0) , 2)
+                    box = np.int64(box)
 
-            # cv2.circle(frame,center,(0,0,255), -1)
+                    M = cv2.moments(contour)
 
-            cv2.putText(frame , text , (50 , 50 ) , cv2.FONT_HERSHEY_COMPLEX_SMALL , 1 ,(0 , 0 , 0 ), 2)
+                    center = (int(M['m10'] / M ['m00']), int(M['m01'] / M ['m00']))
 
-            return frame
+                    cv2.drawContours(frame , [box] , 0 , (0 , 255 , 0) , 2)
+
+                    cv2.putText(frame,"object",(int(x),int(y) - 10),cv2.FONT_HERSHEY_COMPLEX_SMALL,1,(0,0 , 0 ), 2)
+
+
+        print("frame")    
+
+        return frame
